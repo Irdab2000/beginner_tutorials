@@ -48,13 +48,13 @@ cd<to_your_ws>
 ros2 run beginner_tutorials client
 ```
 
-###Run launch file with paramters:
+###Run launch file
 Run the launch file first, then run the client node.
 To run the launch file:
 ```
 cd <ROS2_ws>/
 . install/setup.bash
- ros2 launch beginner_tutorials launcher.yaml frequency:=3.0
+ ros2 launch beginner_tutorials launcher.yaml 
 ```
 
 ### cppcheck command
