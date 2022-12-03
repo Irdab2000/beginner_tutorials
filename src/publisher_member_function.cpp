@@ -23,6 +23,7 @@
  * 
  */
 #include <chrono>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
@@ -30,6 +31,8 @@
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
 #include "example_interfaces/srv/add_two_ints.hpp"
+#include "geometry_msgs/msg/transform_stamped.hpp"
+#include "tf2_ros/transform_broadcaster.h"
 
 using namespace std::chrono_literals;
 size_t sum_;
@@ -61,6 +64,9 @@ class MinimalPublisher : public rclcpp::Node {
                   std::placeholders::_1, std::placeholders::_2);
     service_ = create_service<example_interfaces::srv::AddTwoInts>(
         "add_two_ints", serviceCallbackPtr);
+    tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
+    timer_ = this->create_wall_timer(
+        500ms, std::bind(&MinimalPublisher::timer_callback, this));
   }
 
  private:
@@ -68,12 +74,27 @@ class MinimalPublisher : public rclcpp::Node {
  * @brief Timer callback to publish message
  * 
  */
+std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
   void timer_callback() {
     auto message = std_msgs::msg::String();
     message.data = std::to_string(sum_);
     RCLCPP_INFO_STREAM(this->get_logger(),
     "Publishing output:" << message.data);
     publisher_->publish(message);
+
+    geometry_msgs::msg::TransformStamped trans;
+    trans.header.stamp = this->get_clock()->now();
+    trans.header.frame_id = "world";
+    trans.child_frame_id = "talk";
+    trans.transform.translation.x = 7.0;
+    trans.transform.translation.y = 7.0;
+    trans.transform.translation.z = 7.0;
+    trans.transform.rotation.x = 7.0;
+    trans.transform.rotation.y = 7.0;
+    trans.transform.rotation.z = 7.0;
+    trans.transform.rotation.w = 7.0;
+
+    tf_broadcaster_->sendTransform(trans);
   }
   /**
    * @brief Service callback to perform addition when request is received
@@ -90,47 +111,19 @@ class MinimalPublisher : public rclcpp::Node {
     "Service request\na: %ld" " b: %ld",
                 request->a, request->b);
     RCLCPP_INFO(rclcpp::get_logger("rclcpp"),
-    "Output response: [%ld]", (long int)response->sum);
+    "Output response: [%ld]", (int64_t)response->sum);
   }
 
   // members
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr publisher_;
   rclcpp::Service<example_interfaces::srv::AddTwoInts>::SharedPtr service_;
+  // std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
   size_t sum;
 };
-/*
-void timer_callback() {
-    auto message = std_msgs::msg::String();
-    message.data = defaultMessage + std::to_string(count_++);
-    RCLCPP_INFO_STREAM(this->get_logger(), "Publishing:" << message.data);
-    publisher_->publish(message);
-}
 
-*/
+
 int main(int argc, char * argv[]) {
-  /**
-  rclcpp::init(argc, argv);
-  
-  std::shared_ptr<rclcpp::Node> node = rclcpp::Node::make_shared("add_two_ints_server");
-
-  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr publisher_ = node->create_publisher<std_msgs::msg::String>("topic", 10);
-
-  rclcpp::TimerBase::SharedPtr timer_ = node->create_wall_timer(500ms, &timer_callback);
-
-  rclcpp::Service<example_interfaces::srv::AddTwoInts>::SharedPtr service =
-     node->create_service<example_interfaces::srv::AddTwoInts>("add_two_ints", &add);
-
-  while(rclcpp::ok())
-  {
-    auto message = std_msgs::msg::String();
-    message.data = "The sum is : " + std::to_string(sum_);
-    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Publishing: '%s'", message.data.c_str());
-    publisher_->publish(message);
-    
-  }
-  */
-
   rclcpp::init(argc, argv);
   rclcpp::spin(std::make_shared<MinimalPublisher>());
   rclcpp::shutdown();
